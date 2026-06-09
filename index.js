@@ -1,3 +1,5 @@
+const dns = require("node:dns");
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 const express = require("express");
@@ -66,6 +68,23 @@ async function run() {
       }
 
       const result = await companyCollection.find(query).toArray();
+      res.json(result);
+    });
+
+    // update recruiter company details
+    app.patch("/update/my-companies", async (req, res) => {
+      const updatedData = req.body;
+
+      const query = {};
+
+      if (req.query.recruiterId) {
+        query.recruiterId = req.query.recruiterId;
+      }
+
+      const result = await companyCollection.updateOne(query, {
+        $set: updatedData,
+      });
+
       res.json(result);
     });
 
