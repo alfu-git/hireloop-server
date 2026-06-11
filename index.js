@@ -67,6 +67,22 @@ async function run() {
       res.json(result);
     });
 
+    // get applications
+    app.get("/all-applications", async (req, res) => {
+      const query = {};
+
+      if (req.query.applicantId) {
+        query.applicantId = req.query.applicantId;
+      }
+
+      if (req.query.jobId) {
+        query.jobId = req.query.jobId;
+      }
+
+      const result = await applicationCollection.find(query).toArray();
+      res.json(result);
+    });
+
     // post job application
     app.post("/all-applications", async (req, res) => {
       const application = req.body;
