@@ -1,6 +1,6 @@
 const dns = require("node:dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const express = require("express");
 const app = express();
@@ -29,7 +29,7 @@ async function run() {
     const companyCollection = db.collection("companies");
 
     // get jobs by company id/status
-    app.get("/jobs", async (req, res) => {
+    app.get("/company-jobs", async (req, res) => {
       let query = {};
 
       if (req.query.companyId) {
@@ -45,17 +45,35 @@ async function run() {
       res.json(result);
     });
 
+    // get job by job id
+    app.get("/company-jobs/:jobId", async (req, res) => {
+      const { jobId } = req.params;
+      const query = {
+        _id: new ObjectId(jobId),
+      };
+      const result = await jobsCollection.findOne(query);
+      res.json(result);
+    });
+
     // post new job
     app.post("/jobs", async (req, res) => {
       const job = req.body;
-      const result = await jobsCollection.insertOne(job);
+      const newJob = {
+        ...job,
+        createdAt: new Date(),
+      };
+      const result = await jobsCollection.insertOne(newJob);
       res.json(result);
     });
 
     // post company
     app.post("/companies", async (req, res) => {
       const company = req.body;
-      const result = await companyCollection.insertOne(company);
+      const newCompany = {
+        ...company,
+        createdAt: new Date(),
+      };
+      const result = await companyCollection.insertOne(newCompany);
       res.json(result);
     });
 
