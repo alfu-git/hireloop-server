@@ -25,10 +25,12 @@ async function run() {
     await client.connect();
 
     const db = client.db("hireloop-db");
+    const userCollection = db.collection("user");
     const jobsCollection = db.collection("jobs");
     const applicationCollection = db.collection("applications");
     const companyCollection = db.collection("companies");
     const planCollection = db.collection("plans");
+    const subscriptionCollection = db.collection("subscriptions");
 
     // get jobs by company id/status
     app.get("/company-jobs", async (req, res) => {
@@ -145,6 +147,31 @@ async function run() {
 
       const result = await planCollection.findOne(query);
       res.json(result);
+    });
+
+    // post subscriptions
+    app.post("/subscriptions", async (req, res) => {
+      const data = req.body;
+      console.log("data: ", data);
+      const subsInfo = {
+        ...data,
+        createdAt: new Date(),
+      };
+
+      const result = await subscriptionCollection.insertOne(subsInfo);
+
+      const filter = { email: data.email };
+      const updateDocument = {
+        $set: {
+          plan: data.planId,
+        },
+      };
+
+      const updatedResult = await userCollection.updateOne(
+        filter,
+        updateDocument,
+      );
+      res.json(updatedResult);
     });
 
     await client.db("admin").command({ ping: 1 });
