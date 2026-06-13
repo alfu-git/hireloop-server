@@ -28,6 +28,7 @@ async function run() {
     const jobsCollection = db.collection("jobs");
     const applicationCollection = db.collection("applications");
     const companyCollection = db.collection("companies");
+    const planCollection = db.collection("plans");
 
     // get jobs by company id/status
     app.get("/company-jobs", async (req, res) => {
@@ -131,6 +132,18 @@ async function run() {
         $set: updatedData,
       });
 
+      res.json(result);
+    });
+
+    // get plan by plan_id
+    app.get("/plans", async (req, res) => {
+      const query = {};
+
+      if (req.query.planId) {
+        query.plan_id = req.query.planId;
+      }
+
+      const result = await planCollection.findOne(query);
       res.json(result);
     });
 
