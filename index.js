@@ -108,7 +108,7 @@ async function run() {
       res.json(result);
     });
 
-    // get companies by recruiter id
+    // get all companies and companies by recruiter id
     app.get("/my-companies", async (req, res) => {
       const query = {};
 
@@ -117,6 +117,25 @@ async function run() {
       }
 
       const result = await companyCollection.find(query).toArray();
+      res.json(result);
+    });
+
+    // update company status by admin
+    app.patch("/companies/:companyId", async (req, res) => {
+      const companyId = req.params.companyId;
+      const updatedCompany = req.body;
+
+      const filter = {
+        _id: new ObjectId(companyId),
+      };
+
+      const updatedDoc = {
+        $set: {
+          status: updatedCompany?.status,
+        },
+      };
+
+      const result = await companyCollection.updateOne(filter, updatedDoc);
       res.json(result);
     });
 
