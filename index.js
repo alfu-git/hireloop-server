@@ -26,11 +26,47 @@ async function run() {
 
     const db = client.db("hireloop-db");
     const userCollection = db.collection("user");
+    const sessionCollection = db.collection("session");
     const jobsCollection = db.collection("jobs");
     const applicationCollection = db.collection("applications");
     const companyCollection = db.collection("companies");
     const planCollection = db.collection("plans");
     const subscriptionCollection = db.collection("subscriptions");
+
+    // token verify
+    const verifyToken = async (req, res, next) => {
+      const authHeader = req.headers?.authorization;
+      const token = authHeader.split(" ")[1];
+
+      if (!authHeader) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+
+      if (!token) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+
+      const sessionFindQuery = {
+        token: token,
+      };
+      const session = await sessionCollection.findOne(sessionFindQuery);
+
+      const userId = session?.userId;
+      const userFindQuery = {
+        _id: userId,
+      };
+      const user = await userCollection.findOne(userFindQuery);
+
+      req.user = user;
+      next();
+    };
+
+    const verifySeeker = async (req, res, next) => {
+      if (req?.user?.role !== "seeker") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
 
     // get jobs by company id/status
     app.get("/company-jobs", async (req, res) => {
@@ -71,20 +107,29 @@ async function run() {
     });
 
     // get applications
-    app.get("/all-applications", async (req, res) => {
-      const query = {};
+    app.get(
+      "/all-applications",
+      verifyToken,
+      verifySeeker,
+      async (req, res) => {
+        const query = {};
 
-      if (req.query.applicantId) {
-        query.applicantId = req.query.applicantId;
-      }
+        if (req.query.applicantId) {
+          query.applicantId = req.query.applicantId;
 
-      if (req.query.jobId) {
-        query.jobId = req.query.jobId;
-      }
+          if (req.user._id.toString() !== req.query.applicantId) {
+            res.status(403).send({ message: "forbidden access" });
+          }
+        }
 
-      const result = await applicationCollection.find(query).toArray();
-      res.json(result);
-    });
+        if (req.query.jobId) {
+          query.jobId = req.query.jobId;
+        }
+
+        const result = await applicationCollection.find(query).toArray();
+        res.json(result);
+      },
+    );
 
     // post job application
     app.post("/all-applications", async (req, res) => {
@@ -109,19 +154,28 @@ async function run() {
     });
 
     // get all companies and companies by recruiter id
-    app.get("/my-companies", async (req, res) => {
+    app.get("/my-companies", verifyToken, async (req, res) => {
       const query = {};
 
       if (req.query.recruiterId) {
         query.recruiterId = req.query.recruiterId;
       }
 
-      const result = await companyCollection.find(query).toArray();
-      res.json(result);
+      const companies = await companyCollection.find(query).toArray();
+
+      for (const company of companies) {
+        const filter = {
+          companyId: company._id.toString(),
+        };
+        const jobCount = await jobsCollection.countDocuments(filter);
+        company.totalJobs = jobCount;
+      }
+
+      res.json(companies);
     });
 
     // update company status by admin
-    app.patch("/companies/:companyId", async (req, res) => {
+    app.patch("/companies/:companyId", verifyToken, async (req, res) => {
       const companyId = req.params.companyId;
       const updatedCompany = req.body;
 
